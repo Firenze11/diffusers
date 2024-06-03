@@ -50,6 +50,7 @@ from diffusers.utils import check_min_version, convert_state_dict_to_diffusers, 
 from diffusers.utils.hub_utils import load_or_create_model_card, populate_model_card
 from diffusers.utils.import_utils import is_xformers_available
 from diffusers.utils.torch_utils import is_compiled_module
+from .utils import SquarePad
 
 
 if is_wandb_available():
@@ -263,6 +264,16 @@ def parse_args():
         "--random_flip",
         action="store_true",
         help="whether to randomly flip images horizontally",
+    )
+    parser.add_argument(
+        "--square_pad",
+        action="store_true",
+        help="whether to pad images to squares (fill with 0's)",
+    )
+    parser.add_argument(
+        "--do_normalize",
+        action="store_true",
+        help="whether to normalize images",
     )
     parser.add_argument(
         "--train_batch_size", type=int, default=16, help="Batch size (per device) for the training dataloader."
@@ -656,11 +667,12 @@ def main():
     # Preprocessing the datasets.
     train_transforms = transforms.Compose(
         [
+            SquarePad() if args.square_pad else transforms.Lambda(lambda x: x),
             transforms.Resize(args.resolution, interpolation=transforms.InterpolationMode.BILINEAR),
             transforms.CenterCrop(args.resolution) if args.center_crop else transforms.RandomCrop(args.resolution),
             transforms.RandomHorizontalFlip() if args.random_flip else transforms.Lambda(lambda x: x),
             transforms.ToTensor(),
-            transforms.Normalize([0.5], [0.5]),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) if args.do_normalize else transforms.Lambda(lambda x: x),
         ]
     )
 
