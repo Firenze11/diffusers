@@ -43,7 +43,7 @@ from tqdm.auto import tqdm
 from transformers import CLIPTextModel, CLIPTokenizer
 
 import diffusers
-from diffusers import AutoencoderKL, DDPMScheduler, DiffusionPipeline, StableDiffusionPipeline, UNet2DConditionModel
+from diffusers import AutoencoderKL, DDPMScheduler, DDIMScheduler, DiffusionPipeline, StableDiffusionPipeline, UNet2DConditionModel
 from diffusers.optimization import get_scheduler
 from diffusers.training_utils import cast_training_params, compute_snr
 from diffusers.utils import check_min_version, convert_state_dict_to_diffusers, is_wandb_available
@@ -352,6 +352,7 @@ def parse_args():
     parser.add_argument("--adam_epsilon", type=float, default=1e-08, help="Epsilon value for the Adam optimizer")
     parser.add_argument("--max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
     parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
+    parser.add_argument("--private", action="store_true", help="Whether or not to push the model to private repo.")
     parser.add_argument("--hub_token", type=str, default=None, help="The token to use to push to the Model Hub.")
     parser.add_argument(
         "--prediction_type",
@@ -364,6 +365,13 @@ def parse_args():
         type=str,
         default=None,
         help="The name of the repository to keep in sync with the local `output_dir`.",
+    )
+    parser.add_argument(
+        "--scheduler",
+        type=str,
+        default="ddpm",
+        choices=['ddpm', 'ddim'],
+        help='The noise scheduler type to use. Choose between ["ddpm", "ddom"]',
     )
     parser.add_argument(
         "--logging_dir",
@@ -497,10 +505,18 @@ def main():
 
         if args.push_to_hub:
             repo_id = create_repo(
-                repo_id=args.hub_model_id or Path(args.output_dir).name, exist_ok=True, token=args.hub_token
+                repo_id=args.hub_model_id or Path(args.output_dir).name, exist_ok=True, token=args.hub_token, private=args.private
             ).repo_id
+
     # Load scheduler, tokenizer and models.
-    noise_scheduler = DDPMScheduler.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
+    if args.schedular == 'ddpm':
+        schedular_class = DDPMScheduler
+    elif args.schedular == 'ddim':
+        schedular_class = DDIMScheduler
+    else:
+        raise ValueError(f'Invalid schedular `{args.schedular}`.')
+    noise_scheduler = schedular_class.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
+
     tokenizer = CLIPTokenizer.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="tokenizer", revision=args.revision
     )
