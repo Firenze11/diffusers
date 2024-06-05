@@ -54,6 +54,7 @@ from diffusers.utils.torch_utils import is_compiled_module
 
 if is_wandb_available():
     import wandb
+    wandb.login(key=os.environ.get('WANDB_TOKEN'))
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.29.0.dev0")
