@@ -50,7 +50,7 @@ from diffusers.utils import check_min_version, convert_state_dict_to_diffusers, 
 from diffusers.utils.hub_utils import load_or_create_model_card, populate_model_card
 from diffusers.utils.import_utils import is_xformers_available
 from diffusers.utils.torch_utils import is_compiled_module
-from .utils import SquarePad
+# from .utils import SquarePad
 
 
 if is_wandb_available():
@@ -60,6 +60,16 @@ if is_wandb_available():
 check_min_version("0.29.0.dev0")
 
 logger = get_logger(__name__, log_level="INFO")
+
+
+class SquarePad:
+	def __call__(self, image):
+		w, h = image.size
+		max_wh = np.max([w, h])
+		hp = int((max_wh - w) / 2)
+		vp = int((max_wh - h) / 2)
+		padding = (hp, vp, hp, vp)
+		return transforms.functional.pad(image, padding, 0, 'constant')
 
 
 def save_model_card(
@@ -509,13 +519,13 @@ def main():
             ).repo_id
 
     # Load scheduler, tokenizer and models.
-    if args.schedular == 'ddpm':
-        schedular_class = DDPMScheduler
-    elif args.schedular == 'ddim':
-        schedular_class = DDIMScheduler
+    if args.scheduler == 'ddpm':
+        scheduler_class = DDPMScheduler
+    elif args.scheduler == 'ddim':
+        scheduler_class = DDIMScheduler
     else:
-        raise ValueError(f'Invalid schedular `{args.schedular}`.')
-    noise_scheduler = schedular_class.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
+        raise ValueError(f'Invalid scheduler `{args.scheduler}`.')
+    noise_scheduler = scheduler_class.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
 
     tokenizer = CLIPTokenizer.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="tokenizer", revision=args.revision
